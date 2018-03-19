@@ -1,6 +1,6 @@
 {
   "name": "inline-rest-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Easy to use rest client for js",
   "main": "src/index.js",
   "repository": "https://github.com/matrix0123456789/inline-rest-client",
