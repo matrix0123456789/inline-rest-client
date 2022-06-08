@@ -119,6 +119,8 @@ function run(nodeName) {
                 reject(new ResposeodeException(e.target.status, e.target.statusText, toResolve));
             }
         };
+        if(this.withCredentials)
+            xhr.withCredentials=this.withCredentials
         xhr.onerror = e => reject(new Error('Connection error'));
         xhr.send();
     });
