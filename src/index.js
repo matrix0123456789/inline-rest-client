@@ -8,11 +8,13 @@ const startingConfig = {
         return baseUrl + path.join('/');
     }
 };
+
 function ResposeodeException(status, statusText, content) {
     this.status = status;
     this.statusText = statusText;
     this.content = content;
 }
+
 const factoryHandler = {
     apply(target, args) {
         return this.construct(target, args);
@@ -35,6 +37,7 @@ const factoryHandler = {
         return ret;
     }
 }
+
 function buildParametersQueryPart(obj, arr = [], prefix = '') {
     if (typeof obj == 'object')
         for (var x in obj) {
@@ -46,6 +49,7 @@ function buildParametersQueryPart(obj, arr = [], prefix = '') {
     else
         arr.push(prefix + '=' + encodeURI(obj))
 }
+
 function buildParametersQuery(url, parameters) {
     for (var parameter of parameters) {
 
@@ -62,6 +66,7 @@ function buildParametersQuery(url, parameters) {
     }
     return url;
 }
+
 function buildParametersPath(url, parameters) {
     for (var parameter of parameters) {
         if (typeof parameter == 'object') {
@@ -74,10 +79,11 @@ function buildParametersPath(url, parameters) {
     return url;
 }
 
-function run(nodeName) {
+async function run(nodeName) {
     for (var _len = arguments.length, parameters = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
         parameters[_key - 1] = arguments[_key];
     }
+    console.log({parameters, arguments})
     var method = this.defaultMethod;
     var path = this.__path.slice();
     if (nodeName == 'post' || nodeName == 'get' || nodeName == 'put' || nodeName == 'patch' || nodeName == 'delete') {
@@ -86,47 +92,54 @@ function run(nodeName) {
         path.push(nodeName);
     }
 
-    return new Promise((resolve, reject) => {
-        var url = this.urlBuilder(this.url, path);
-        if (this.parameterType == 'query')
-        {
-            url = buildParametersQuery(url, parameters);
-        } else if (this.parameterType == 'path')
-        {
-            url = buildParametersPath(url, parameters);
-        } else {
-            new Error('Unknown parameter type');
-        }
-        var xhr = new XMLHttpRequest();
-        xhr.open(method, url, true);
-        xhr.onload = e => {
-            var toResolve;
-            var mime = e.target.getResponseHeader('content-type');
-            if (mime && mime.indexOf('json') >= 0)
-                try {
-                    toResolve = JSON.parse(e.target.responseText)
-                } catch (e) {
-                    reject(e)
-                    return;
-                }
-            else
-                toResolve = e.target.responseText;
-
-            if (e.target.status == 200) {
-                resolve(toResolve);
-            } else {
-
-                reject(new ResposeodeException(e.target.status, e.target.statusText, toResolve));
+    var url = this.urlBuilder(this.url, path);
+    var fetchConfig = {method, headers: {}}
+    if (this.parameterType == 'query') {
+        url = buildParametersQuery(url, parameters);
+    } else if (this.parameterType == 'path') {
+        url = buildParametersPath(url, parameters);
+    } else if (this.parameterType == 'json') {
+        fetchConfig.body = JSON.stringify(parameters[0] ?? null);
+    } else if (this.parameterType == 'multipart') {
+        fetchConfig.body = new FormData();
+        for (const parameter of parameters) {
+            for (const [key, value] of Object.entries(parameter)) {
+                fetchConfig.body.append(key, value);
             }
-        };
-        if(this.withCredentials)
-            xhr.withCredentials=this.withCredentials
-        xhr.onerror = e => reject(new Error('Connection error'));
-        xhr.send();
-    });
+        }
+    } else {
+        new Error('Unknown parameter type');
+    }
+    if (this.parameterType == 'json') {
+        fetchConfig.headers['content-type'] = 'application/json'
+    } else if (this.parameterType == 'multipart') {
+        //fetchConfig.headers['content-type'] = 'multipart/form-data'
+    }
+    if (this.withCredentials) {
+        fetchConfig.credentials = 'include'
+    }
+
+    let response = await fetch(url, fetchConfig)
+
+    var toResolve;
+    var mime = response.headers.get('content-type');
+    if (mime && mime.indexOf('json') >= 0)
+        toResolve = await response.json()
+    else
+        toResolve = await response.text()
+
+    if (response.status == 200) {
+        return toResolve;
+    } else if (response.status == 204) {
+        return null;
+    } else {
+        throw new ResposeodeException(response.status, response.statusText, toResolve);
+    }
 }
-const factory = new Proxy(function () {}
-, factoryHandler);
+
+const factory = new Proxy(function () {
+    }
+    , factoryHandler);
 const clientProtoHandler = {
     get(target, nodeName, client) {
         var runFun = run.bind(target, nodeName);
