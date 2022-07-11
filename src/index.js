@@ -2,6 +2,7 @@ const startingConfig = {
     defaultMethod: 'get',
     parameterType: 'query',
     url: '/',
+    headers:{},
     urlBuilder: function (baseUrl, path) {
         if (baseUrl.substr(-1) != '/')
             baseUrl += '/';
@@ -93,7 +94,7 @@ async function run(nodeName) {
     }
 
     var url = this.urlBuilder(this.url, path);
-    var fetchConfig = {method, headers: {}}
+    var fetchConfig = {method, headers: this.headers}
     if (this.parameterType == 'query') {
         url = buildParametersQuery(url, parameters);
     } else if (this.parameterType == 'path') {
