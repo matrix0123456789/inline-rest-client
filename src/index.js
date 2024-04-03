@@ -1,8 +1,9 @@
 const startingConfig = {
     defaultMethod: 'get',
     parameterType: 'query',
+    responseType:'auto',
     url: '/',
-    headers:{},
+    headers: {},
     urlBuilder: function (baseUrl, path) {
         if (baseUrl.substr(-1) != '/')
             baseUrl += '/';
@@ -20,6 +21,12 @@ const factoryHandler = {
     apply(target, args) {
         return this.construct(target, args);
 
+    },
+    __clone: function (params={}) {
+        const ret={};
+        Object.setPrototypeOf(ret, this)
+        Object.assign(ret, params);
+        return ret;
     },
     construct(target, args) {
         var config = Object.assign({}, startingConfig);
@@ -108,6 +115,13 @@ async function run(nodeName) {
                 fetchConfig.body.append(key, value);
             }
         }
+    } else if (this.parameterType == 'multipartJson') {
+        fetchConfig.body = new FormData();
+        let i = 0;
+        for (const parameter of parameters) {
+            fetchConfig.body.append(i, JSON.stringify(parameter));
+            i++;
+        }
     } else {
         new Error('Unknown parameter type');
     }
@@ -123,11 +137,19 @@ async function run(nodeName) {
     let response = await fetch(url, fetchConfig)
 
     var toResolve;
-    var mime = response.headers.get('content-type');
-    if (mime && mime.indexOf('json') >= 0)
+    if(this.responseType=='auto') {
+        var mime = response.headers.get('content-type');
+        if (mime && mime.indexOf('json') >= 0)
+            toResolve = await response.json()
+        else
+            toResolve = await response.text()
+    }else if(this.responseType=='json'){
         toResolve = await response.json()
-    else
+    }else if(this.responseType=='text'){
         toResolve = await response.text()
+    }else if(this.responseType=='blob'){
+        toResolve = await response.blob()
+    }
 
     if (response.status == 200) {
         return toResolve;
