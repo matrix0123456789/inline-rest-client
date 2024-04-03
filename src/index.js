@@ -1,7 +1,7 @@
 const startingConfig = {
     defaultMethod: 'get',
     parameterType: 'query',
-    responseType:'auto',
+    responseType: 'auto',
     url: '/',
     headers: {},
     urlBuilder: function (baseUrl, path) {
@@ -21,12 +21,6 @@ const factoryHandler = {
     apply(target, args) {
         return this.construct(target, args);
 
-    },
-    __clone: function (params={}) {
-        const ret={};
-        Object.setPrototypeOf(ret, this)
-        Object.assign(ret, params);
-        return ret;
     },
     construct(target, args) {
         var config = Object.assign({}, startingConfig);
@@ -137,17 +131,17 @@ async function run(nodeName) {
     let response = await fetch(url, fetchConfig)
 
     var toResolve;
-    if(this.responseType=='auto') {
+    if (this.responseType == 'auto') {
         var mime = response.headers.get('content-type');
         if (mime && mime.indexOf('json') >= 0)
             toResolve = await response.json()
         else
             toResolve = await response.text()
-    }else if(this.responseType=='json'){
+    } else if (this.responseType == 'json') {
         toResolve = await response.json()
-    }else if(this.responseType=='text'){
+    } else if (this.responseType == 'text') {
         toResolve = await response.text()
-    }else if(this.responseType=='blob'){
+    } else if (this.responseType == 'blob') {
         toResolve = await response.blob()
     }
 
@@ -170,6 +164,13 @@ const clientProtoHandler = {
         for (var x in target) {
             runFun[x] = target[x];
         }
+
+        runFun.__clone = (params = {}) => {
+            const ret = {};
+            Object.setPrototypeOf(ret, runFun)
+            Object.assign(ret, params);
+            return ret;
+        };
 
         if (target.__path)
             var path = target.__path.slice();
